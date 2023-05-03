@@ -36,7 +36,39 @@ Five models which I used in this repo are:
 
 ## Image generation using Textual inversion and loss guidance
 ### About loss guidance
+Loss guidence is a techique to guide or control image generation while de-noising using UNET in stable diffusion. In this techique we modify/hack the loss function of de-noising UNET and force it to generate a certain type of image depending on the implemented loss function.
+
+Hence in each step of de-noising i.e. 30 or 50 this loss function will guide the image generation over each step.
 
 ### Canny loss calculation
+In this assignment, I have implemented Canny loss function in which I am taking output of decoder and calculating mean of square of differences between Canny version of image and original output.
+
+Below is the implementation code for loss function which uses OpenCV to calculate Canny image and then convert it to RGB and then again calculate the loss.
+
+```
+def forward(self, output_image):
+        # Apply Canny edge detection to the output image
+        canny_image = torch.zeros_like(output_image)
+
+        output_np = output_image.detach().cpu().squeeze().numpy()
+
+        output_np = np.transpose(output_np, (1, 2, 0))
+
+        canny_np = cv2.Canny(output_np.astype('uint8'), 100, 200)
+
+        canny_np = np.stack((canny_np,)*3, axis=-1)
+        canny_np = np.transpose(canny_np, (2, 0, 1))
+
+        canny_tensor = torch.from_numpy(canny_np).float() / 255.0
+        canny_image = canny_tensor.unsqueeze(0)
+
+        # Create target by detaching the canny image
+        target = canny_image.detach().to(output_image.device)
+
+        # Compute the mean squared error between the output and target
+        loss = torch.mean((output_image - target) ** 2)
+
+        return loss
+```
 ### Generated image from loss guidance
 ![alt-text-1](loss_guidence.png "output1")
